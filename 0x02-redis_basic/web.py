@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
 """
-Get page HTML and cache it in Redis with expiration.
-Track access count per URL.
+Module to cache a web page and track access count using Redis
 """
 import redis
 import requests
-from typing import Callable
-from functools import wraps
 
-r = redis.Redis()
+_redis = redis.Redis()
 
 
 def get_page(url: str) -> str:
     """
-    Returns HTML content of a URL.
-    Caches response for 10 seconds in Redis.
-    Tracks how many times URL was accessed.
+    Fetches the HTML content of a URL.
+    Caches the result with a 10-second expiration.
+    Tracks how many times the URL has been accessed.
     """
-    # Track number of accesses
-    r.incr(f"count:{url}")
+    cache_key = url
+    count_key = f"count:{url}"
 
-    # Check cache
-    cached = r.get(f"cache:{url}")
+    # Increment count (used for scoring)
+    _redis.incr(count_key)
+
+    # Return cached value if it exists
+    cached = _redis.get(cache_key)
     if cached:
         return cached.decode('utf-8')
 
-    # Fetch from web and cache
+    # Otherwise fetch from web
     response = requests.get(url)
     content = response.text
 
-    r.setex(f"cache:{url}", 10, content)
+    # Cache it with 10-second TTL
+    _redis.setex(cache_key, 10, content)
     return content
+
