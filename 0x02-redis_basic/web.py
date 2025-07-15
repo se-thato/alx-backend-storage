@@ -2,8 +2,10 @@
 """
 Module to cache a web page and track access count using Redis
 """
+
 import redis
 import requests
+
 
 _redis = redis.Redis()
 
@@ -17,19 +19,20 @@ def get_page(url: str) -> str:
     cache_key = url
     count_key = f"count:{url}"
 
-    # Increment count (used for scoring)
+    # Increment access count
     _redis.incr(count_key)
 
-    # Return cached value if it exists
+    # Return cached content if available
     cached = _redis.get(cache_key)
     if cached:
         return cached.decode('utf-8')
 
-    # Otherwise fetch from web
+    # Fetch content from web
     response = requests.get(url)
     content = response.text
 
-    # Cache it with 10-second TTL
+    # Cache the content for 10 seconds
     _redis.setex(cache_key, 10, content)
+
     return content
 
